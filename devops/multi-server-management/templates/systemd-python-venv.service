@@ -1,0 +1,47 @@
+# systemd + Python venv 服务模板
+
+## 标准模板（系统Python）
+```ini
+[Unit]
+Description=My Service
+After=network.target
+
+[Service]
+Type=simple
+User=admin
+WorkingDirectory=/opt/project
+ExecStart=/usr/bin/python3 /opt/project/app.py
+Restart=always
+RestartSec=5
+EnvironmentFile=-/opt/project/.env
+
+[Install]
+WantedBy=multi-user.target
+```
+
+## venv Python 模板（推荐）
+```ini
+[Unit]
+Description=My Service
+After=network.target
+
+[Service]
+Type=simple
+User=admin
+WorkingDirectory=/opt/project
+ExecStart=/home/admin/.hermes/hermes-agent/venv/bin/python3 /opt/project/app.py
+Restart=always
+RestartSec=5
+Environment=PORT=8080
+Environment=ADMIN_TOKEN=secret123
+
+[Install]
+WantedBy=multi-user.target
+```
+
+## 调试命令
+```bash
+systemctl status service-name --no-pager
+journalctl -u service-name -n 30 --no-pager
+systemctl daemon-reload && systemctl restart service-name
+```
