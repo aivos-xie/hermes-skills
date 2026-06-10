@@ -26,10 +26,20 @@ Requires the codex CLI and a git repository.
 
 ## Prerequisites
 
-- Codex installed: `npm install -g @openai/codex`
+- **Codex installed** (two methods):
+  - npm: `npm install -g @openai/codex`
+  - Standalone binary (Rust, recommended): download from [GitHub Releases](https://github.com/openai/codex/releases)
+    - Linux x86_64: `codex-x86_64-unknown-linux-musl.tar.gz`
+    - Linux ARM: `codex-aarch64-unknown-linux-musl.tar.gz`
+    - macOS ARM: `codex-aarch64-apple-darwin.tar.gz`
+    - macOS x86: `codex-x86_64-apple-darwin.tar.gz`
+    - Windows x86: `codex-x86_64-pc-windows-msvc.exe.zip`
+    - Version naming: `rust-v0.139.0` format (the `rust-` prefix indicates Rust build)
+  - Extract and place binary in PATH
 - OpenAI auth configured: either `OPENAI_API_KEY` or Codex OAuth credentials
   from the Codex CLI login flow
 - **Must run inside a git repository** — Codex refuses to run outside one
+- **Network**: needs access to OpenAI API (api.openai.com) — requires proxy on servers without direct access
 - Use `pty=true` in terminal calls — Codex is an interactive terminal app
 
 For Hermes itself, `model.provider: openai-codex` uses Hermes-managed Codex
@@ -119,12 +129,48 @@ terminal(command="codex exec 'Review PR #87. git diff origin/main...origin/pr/87
 terminal(command="gh pr comment 86 --body '<review>'", workdir="~/project")
 ```
 
-## Rules
+## Server Compatibility Check
+
+When user asks "can server X run Codex", check:
+```bash
+uname -m && free -h && df -h / && cat /etc/os-release | head -3
+```
+
+Minimum: x86_64 or aarch64, ~200MB free RAM, ~100MB disk. The binary itself is lightweight — main resource cost is the API call context, not local compute.
+
+**Key pitfall**: Codex needs outbound HTTPS to `api.openai.com`. Servers in China (Alibaba Cloud etc.) without a proxy will fail silently or timeout. Always check network access before recommending installation.
+
+## Custom Providers (Non-OpenAI)
+
+Codex supports non-OpenAI providers via config fields discovered in the config schema:
+
+| Config Key | Purpose |
+|------------|---------|
+| `model_provider` | Select active provider from the `model_providers` map |
+| `model_providers` | Define custom provider entries (extends built-in list) |
+| `openai_base_url` | Override the built-in `openai` provider's base URL |
+| `model` | Model name to use |
+
+**Quick setup for OpenAI-compatible APIs** (DeepSeek, Together AI, etc.):
+```bash
+# In ~/.codex/config.json or via environment:
+export OPENAI_BASE_URL="https://api.deepseek.com/v1"
+export OPENAI_API_KEY="sk-..."
+export MODEL="deepseek-coder"
+```
+
+**Works with**: DeepSeek, Together AI, SiliconFlow, Ollama (local), vLLM, any OpenAI-compatible endpoint.
+
+**Caveat**: Codex requires strong tool-calling and code-understanding capabilities. Smaller/weaker models will produce poor results. GPT-4-class or equivalent recommended.
+
+## Pitfalls
 
 1. **Always use `pty=true`** — Codex is an interactive terminal app and hangs without a PTY
 2. **Git repo required** — Codex won't run outside a git directory. Use `mktemp -d && git init` for scratch
-3. **Use `exec` for one-shots** — `codex exec "prompt"` runs and exits cleanly
-4. **`--full-auto` for building** — auto-approves changes within the sandbox
-5. **Background for long tasks** — use `background=true` and monitor with `process` tool
-6. **Don't interfere** — monitor with `poll`/`log`, be patient with long-running tasks
-7. **Parallel is fine** — run multiple Codex processes at once for batch work
+3. **Large binary downloads** — Standalone binaries are 60-100MB. On bandwidth-limited servers, ask user before downloading. Consider npm install instead if Node.js is available.
+4. **China servers** — api.openai.com is blocked. Need proxy or alternative endpoint.
+5. **`--full-auto` for building** — auto-approves changes within the sandbox
+6. **Background for long tasks** — use `background=true` and monitor with `process` tool
+7. **Don't interfere** — monitor with `poll`/`log`, be patient with long-running tasks
+8. **Parallel is fine** — run multiple Codex processes at once for batch work
+9. **Cancel cleanup** — if a large binary download is interrupted, `rm` partial files immediately (`codex-*.tar.gz`, `codex-*.zip`)

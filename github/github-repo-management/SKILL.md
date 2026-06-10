@@ -404,7 +404,58 @@ curl -s -X POST \
   --data-binary @./dist/binary-amd64
 ```
 
-## 9. GitHub Actions Workflows
+## 9. Downloading Release Assets
+
+**PITFALL — asset names are NOT guessable.** Always query the API first. Files like `codex-x86_64-pc-windows-msvc.zip` may not exist; the real name could be `codex-x86_64-pc-windows-msvc.exe.zip`. The API returns exact names + sizes.
+
+**PITFALL — GitHub downloads are extremely slow from China servers** (~14KB/s direct). Use a mirror proxy prefix: `ghfast.top/https://github.com/...` → ~2.5MB/s.
+
+### List assets for a release
+
+```bash
+# Latest release — list all assets with names and sizes
+curl -s "https://api.github.com/repos/OWNER/REPO/releases/latest" \
+  | python3 -c "
+import json,sys
+data=json.load(sys.stdin)
+print('Tag:', data.get('tag_name'))
+for a in data.get('assets',[]):
+    print(f\"  {a['name']:60} {a['size']/1048576:.1f}MB\")"
+
+# Filter by platform keyword
+curl -s "https://api.github.com/repos/OWNER/REPO/releases/latest" \
+  | python3 -c "
+import json,sys
+for a in json.load(sys.stdin).get('assets',[]):
+    if 'windows' in a['name'].lower():
+        print(a['name'], '|', a['browser_download_url'])"
+```
+
+### Download an asset
+
+```bash
+# Direct (slow from China)
+curl -L -o filename.zip "https://github.com/OWNER/REPO/releases/download/TAG/ASSET_NAME"
+
+# Via mirror proxy (fast from China) — prepending ghfast.top/
+curl -L -o filename.zip "https://ghfast.top/https://github.com/OWNER/REPO/releases/download/TAG/ASSET_NAME"
+
+# For large files (>100MB), use terminal(background=true) to avoid timeout
+```
+
+### Install scripts (Windows PowerShell / Linux shell)
+
+Many releases ship `install.ps1` or `install.sh`. These auto-detect arch and download the right binary:
+
+```bash
+# Linux/macOS
+curl -fsSL https://github.com/OWNER/REPO/releases/download/TAG/install.sh | sh
+
+# Windows (PowerShell)
+# iwr -useb https://github.com/OWNER/REPO/releases/download/TAG/install.ps1 | iex
+```
+
+## 10. GitHub Actions Workflows
 
 **With gh:**
 
@@ -466,7 +517,7 @@ curl -s -X POST \
   -d '{"ref": "main", "inputs": {"environment": "staging"}}'
 ```
 
-## 10. Gists
+## 11. Gists
 
 **With gh:**
 
@@ -510,6 +561,7 @@ for g in json.load(sys.stdin):
 | Fork | `gh repo fork o/r --clone` | `curl POST /repos/o/r/forks` + `git clone` |
 | Repo info | `gh repo view o/r` | `curl GET /repos/o/r` |
 | Edit settings | `gh repo edit --...` | `curl PATCH /repos/o/r` |
+| Download asset | — | `curl -L -o f TAG/ASSET` (use `ghfast.top/` in CN) |
 | Create release | `gh release create v1.0` | `curl POST /repos/o/r/releases` |
 | List workflows | `gh workflow list` | `curl GET /repos/o/r/actions/workflows` |
 | Rerun CI | `gh run rerun ID` | `curl POST /repos/o/r/actions/runs/ID/rerun` |

@@ -5,6 +5,9 @@ triggers:
   - user asks to build a web tool dashboard or file manager
   - user wants to replace an existing heavy service with a custom lightweight one
   - deploying Flask or Python web apps on Linux servers
+  - user asks to build a knowledge base or documentation website
+  - user asks about GitHub Pages deployment
+  - user asks about static site hosting for Chinese users
 ---
 
 # Web Tool Builder
@@ -180,4 +183,5 @@ When building a file manager, ensure these features:
 ## References
 
 - `references/alist-troubleshooting.md` — AList permission and storage fixes
-- `templates/flask-file-manager.py` — Complete starter template
+- `references/alibaba-cloud-server.md` — Alibaba Cloud ECS configuration
+- `references/github-pages-knowledge-base.md` — Static knowledge base site on GitHub Pages (fuse.js search, skill packaging, auto-sync, China hosting decision tree)
